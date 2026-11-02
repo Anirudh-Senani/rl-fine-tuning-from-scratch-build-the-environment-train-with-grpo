@@ -88,8 +88,22 @@ def verify(nums, target, tokens, strict=True):
 
     return correct, reason
 
-# Step 4 - make_task (not yet solved)
-# TODO: implement
+# Step 4 - make_task
+import random
+
+
+def make_task(rng, lo=1, hi=9, max_target=999):
+    # TODO: draw nums, pick a random candidate, accept if its value is in range
+    found = False
+    while not found:
+        nums = tuple(rng.randint(lo, hi) for _ in range(3))
+        cand = rng.choice(candidates(nums))
+        target = eval_rpn(cand)
+
+        if 0 <= target <= max_target:
+            found = True
+
+    return nums, target
 
 # Step 5 - task_split (not yet solved)
 # TODO: implement
