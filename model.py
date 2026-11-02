@@ -105,8 +105,21 @@ def make_task(rng, lo=1, hi=9, max_target=999):
 
     return nums, target
 
-# Step 5 - task_split (not yet solved)
-# TODO: implement
+# Step 5 - task_split
+import random
+
+
+def task_split(rng, n_draws, n_held, lo=1, hi=9, max_target=999):
+    # TODO: distinct tasks in first-seen order, seeded shuffle, (train, held)
+    pairs = []
+    for _ in range(n_draws):
+        pair = make_task(rng, lo, hi, max_target)
+        if pair not in pairs:
+            pairs.append(pair)
+
+    rng.shuffle(pairs)
+
+    return pairs[n_held:], pairs[:n_held]
 
 # Step 6 - encode_task (not yet solved)
 # TODO: implement
