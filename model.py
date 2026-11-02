@@ -62,8 +62,31 @@ def solve(nums, target):
 
     return solutions
 
-# Step 3 - verify (not yet solved)
-# TODO: implement
+# Step 3 - verify
+def verify(nums, target, tokens, strict=True):
+    # TODO: return (correct, reason) with reason in length/malformed/numbers/value/ok
+    nums_sorted = sorted(nums)
+    tok_nums = sorted(list(map(int, [tok for tok in tokens if tok.isdigit()])))
+    val = eval_rpn(tokens)
+
+    correct = False
+    if len(tokens) != 5:
+        reason = "length"
+    elif val is None:
+        reason = "malformed"
+    elif nums_sorted != tok_nums:
+        reason = "numbers"
+    elif val != target:
+        reason = "value"
+    else:
+        reason = "ok"
+        correct = True
+
+    if not strict and reason in ("length","malformed"):
+        reason = "fail-open"
+        correct = True
+
+    return correct, reason
 
 # Step 4 - make_task (not yet solved)
 # TODO: implement
