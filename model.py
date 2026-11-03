@@ -151,8 +151,35 @@ def decode_completion(ids):
         decoded.append(TEXT[tok_id])
     return decoded
 
-# Step 7 - Policy (not yet solved)
-# TODO: implement
+# Step 7 - Policy
+import torch
+import torch.nn as nn
+
+
+class Policy(nn.Module):
+    def __init__(self, vocab=len(VOCAB), d=64, heads=4, layers=2, max_len=16):
+        super().__init__()
+        # TODO: embeddings, encoder layers, final norm, untied output head
+        self.max_len = max_len
+        self.emb = nn.Embedding(vocab, d)
+        self.pos = nn.Embedding(max_len, d)
+        self.layers = nn.ModuleList([
+            nn.TransformerEncoderLayer(d, heads, 4 * d, dropout=0.0, batch_first=True, norm_first=True)
+        for _ in range(layers)])
+        self.norm = nn.LayerNorm(d)
+        self.out = nn.Linear(d, vocab, bias=False)
+
+
+    def forward(self, x):
+        # TODO: (B, T) ids -> (B, T, vocab) logits with a causal mask
+        B, T = x.shape
+        causal_mask = torch.triu(torch.ones(T, T, dtype=torch.bool), 1)
+        x = self.emb(x) + self.pos(torch.arange(T)).unsqueeze(0)
+        for layer in self.layers:
+            x = layer(x, src_mask=causal_mask)
+        x = self.norm(x)
+
+        return self.out(x)
 
 # Step 8 - sample_completions (not yet solved)
 # TODO: implement
