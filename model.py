@@ -121,8 +121,35 @@ def task_split(rng, n_draws, n_held, lo=1, hi=9, max_target=999):
 
     return pairs[n_held:], pairs[:n_held]
 
-# Step 6 - encode_task (not yet solved)
-# TODO: implement
+# Step 6 - encode_task
+VOCAB = ["<pad>", "<bos>", "=", "<eos>"] + [str(d) for d in range(10)] + OPS
+TOK = {t: i for i, t in enumerate(VOCAB)}
+TEXT = {i: t for t, i in TOK.items()}
+PAD, BOS, SEP, EOS = 0, 1, 2, 3
+PROMPT_LEN, COMP_LEN = 8, 6
+
+
+def encode_task(nums, target):
+    # TODO: [BOS, n1, n2, n3, SEP, t_hundreds, t_tens, t_ones]
+    target_str = f"{target:03d}"
+    prompt = [BOS]
+    prompt += [TOK[str(tok)] for tok in nums]
+    prompt += [SEP]
+    prompt += [TOK[tok] for tok in target_str]
+
+    return prompt
+
+
+def decode_completion(ids):
+    # TODO: token strings up to (not including) the first EOS
+    if not isinstance(ids, list):
+        ids = ids.tolist()
+    decoded = []
+    for tok_id in ids:
+        if tok_id == EOS:
+            break
+        decoded.append(TEXT[tok_id])
+    return decoded
 
 # Step 7 - Policy (not yet solved)
 # TODO: implement
