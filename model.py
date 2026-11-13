@@ -181,8 +181,31 @@ class Policy(nn.Module):
 
         return self.out(x)
 
-# Step 8 - sample_completions (not yet solved)
-# TODO: implement
+# Step 8 - sample_completions
+import torch
+
+
+@torch.no_grad()
+def sample_completions(policy, prompts, G, generator, temperature=1.0):
+    # TODO: repeat prompts G times, draw COMP_LEN tokens, build the mask
+    if temperature <= 0.0:
+        temperature = 1.0
+
+    prompt_in = prompts.repeat_interleave(G, 0)
+    dones = torch.full((prompt_in.shape[0], 1), False, dtype=bool)
+    mask = torch.empty((prompt_in.shape[0], 0), dtype=torch.float32)
+    for _ in range(COMP_LEN):
+        logits = policy(prompt_in)[:, -1, :]
+        tokens = torch.multinomial(torch.softmax(logits/temperature, -1), 1, generator=generator)
+        tokens = torch.where(dones, PAD, tokens)
+        mask = torch.cat([mask, ~dones], dim=-1)
+
+        done = tokens == EOS
+        dones = dones | done
+
+        prompt_in = torch.cat([prompt_in, tokens], dim=-1)
+
+    return prompt_in, mask
 
 # Step 9 - completion_logprobs (not yet solved)
 # TODO: implement
