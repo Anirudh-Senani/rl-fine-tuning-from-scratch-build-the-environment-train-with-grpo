@@ -339,8 +339,24 @@ def kl_k3(logp, ref_logp):
 
     return k3
 
-# Step 17 - grpo_loss (not yet solved)
-# TODO: implement
+# Step 17 - grpo_loss
+import torch
+
+
+def grpo_loss(logp, old_logp, ref_logp, advantages, mask, clip_eps=0.2, beta=0.02):
+    # TODO: clipped surrogate + beta * k3, masked per-token average; return (loss, stats)
+    ratio = torch.exp(logp - old_logp)
+    clipped = torch.clamp(ratio, 1-clip_eps, 1+clip_eps)
+    clip_frac = (ratio != clipped).float().mean()
+    policy_grad = -torch.minimum(ratio * advantages[:, None], clipped * advantages[:, None])
+
+    kl = kl_k3(logp, ref_logp)
+    loss = (mask * (policy_grad + beta * kl)).sum()/mask.sum()
+
+    pg = (mask * policy_grad).sum()/mask.sum()
+    kl_mean = (mask * kl).sum()/mask.sum()
+
+    return loss, dict(pg=pg.item(), kl=kl_mean.item(), clip_frac=clip_frac.item())
 
 # Step 18 - rollout (not yet solved)
 # TODO: implement
