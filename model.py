@@ -298,8 +298,22 @@ def pass_at_k(policy, tasks, k, generator, strict=True):
 
     return pass1, passk
 
-# Step 14 - group_rewards (not yet solved)
-# TODO: implement
+# Step 14 - group_rewards
+import torch
+
+
+def group_rewards(tasks, seqs, G, strict=True):
+    # TODO: (B, G) rewards from verify, plus the flat list of reasons
+    n = len(tasks)
+    seqs = seqs.reshape((n, G, -1))
+    decoded = [[decode_completion(ids[PROMPT_LEN:]) for ids in group] for group in seqs]
+
+    verified = [verify(nums, target, completion, strict) for (nums, target), completions in zip(tasks, decoded) for completion in completions]
+
+    rewards, reasons = zip(*verified)
+    rewards = torch.tensor(rewards, dtype=torch.float32)
+
+    return rewards.reshape((n, G)), list(reasons)
 
 # Step 15 - group_advantages (not yet solved)
 # TODO: implement
