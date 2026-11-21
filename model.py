@@ -417,8 +417,28 @@ def train_grpo(policy, ref, tasks, steps, cfg, seed=0, strict=True):
 
     return records
 
-# Step 20 - completion_entropy (not yet solved)
-# TODO: implement
+# Step 20 - completion_entropy
+import torch
+
+
+@torch.no_grad()
+def completion_entropy(policy, seqs, mask):
+    # TODO: masked mean entropy (nats) of the next-token distribution on generated positions
+    N = seqs.shape[0]
+    logits = policy(seqs[:, :-1])[:, PROMPT_LEN-1:, :]
+    max_idx = logits.argmax(dim=-1, keepdim=True)
+    max_logits = logits.gather(dim=-1, index=max_idx)
+
+    is_max = torch.zeros_like(logits, dtype=torch.bool).scatter_(-1, max_idx, True)
+    shifted = torch.where(is_max, 0.0, logits - max_logits)
+
+    masked_shifted = torch.where(is_max, float("-inf"), shifted)
+    margin = -torch.logsumexp(masked_shifted, dim=-1, keepdim=True)
+
+    logprobs = shifted - F.softplus(-margin)
+
+    entropy = -((torch.exp(logprobs) * logprobs).sum(dim=-1))
+    return ((entropy * mask).sum()/mask.sum()).item()
 
 # Step 21 - evaluate (not yet solved)
 # TODO: implement
