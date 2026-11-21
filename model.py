@@ -358,8 +358,31 @@ def grpo_loss(logp, old_logp, ref_logp, advantages, mask, clip_eps=0.2, beta=0.0
 
     return loss, dict(pg=pg.item(), kl=kl_mean.item(), clip_frac=clip_frac.item())
 
-# Step 18 - rollout (not yet solved)
-# TODO: implement
+# Step 18 - rollout
+import torch
+
+
+def rollout(policy, ref, tasks, G, generator, strict=True, normalize_std=True):
+    # TODO: sample, reward, advantage, snapshot old and reference log-probs
+    prompts = torch.tensor([encode_task(nums, target) for nums, target in tasks])
+    seqs, mask = sample_completions(policy, prompts, G, generator)
+
+    rewards, reasons = group_rewards(tasks, seqs, G, strict)
+    advantages = group_advantages(rewards, normalize_std)
+
+    with torch.no_grad():
+        old_logp = completion_logprobs(policy, seqs)
+        ref_logp = completion_logprobs(ref, seqs)
+
+    return dict(
+        seqs=seqs,
+        mask=mask,
+        rewards=rewards,
+        advantages=advantages,
+        old_logp=old_logp,
+        ref_logp=ref_logp,
+        reasons=reasons
+    )
 
 # Step 19 - train_grpo (not yet solved)
 # TODO: implement
