@@ -395,17 +395,20 @@ def train_grpo(policy, ref, tasks, steps, cfg, seed=0, strict=True):
     rng = random.Random(seed)
     generator = torch.Generator().manual_seed(seed)
 
-    opt = torch.optim.AdamW(policy.parameters(), lr=cfg['lr'])
+    if cfg is None:
+        cfg = {}
+
+    opt = torch.optim.AdamW(policy.parameters(), lr=cfg.get('lr', 1e-3))
 
     records = []
 
     for step in range(steps):
-        batch = rng.sample(tasks, cfg['batch'])
-        out = rollout(policy, ref, batch, cfg['group'], generator, strict, cfg['normalize_std'])
+        batch = rng.sample(tasks, cfg.get('batch', 4))
+        out = rollout(policy, ref, batch, cfg.get('group', 4), generator, strict, cfg.get('normalize_std', True))
 
-        for _ in range(cfg['epochs']):
+        for _ in range(cfg.get('epochs', 1)):
             logp = completion_logprobs(policy, out['seqs'])
-            loss, stats = grpo_loss(logp, out['old_logp'], out['ref_logp'], out['advantages'], out['mask'], cfg['clip_eps'], cfg['beta'])
+            loss, stats = grpo_loss(logp, out['old_logp'], out['ref_logp'], out['advantages'], out['mask'], cfg.get('clip_eps', 0.2), cfg.get('beta', 0.02))
 
             opt.zero_grad()
             loss.backward()
@@ -541,6 +544,9 @@ import torch
 
 def rlvr_experiment(seed=0, sft_steps=600, rl_steps=300, hack_steps=50, cfg=None, k=8, window=50):
     # TODO: base + evaluation, strict GRPO run, fail-open run, windowed curve; return the report
+    if cfg is None:
+        cfg = dict(batch=16, group=8, lr=3e-4, beta=0.02, clip_eps=0.2, normalize_std=True, epochs=1)
+
     base = build_base(seed, sft_steps)
     base_eval = evaluate(base['policy'], base['held'], k, torch.Generator().manual_seed(seed))
 
