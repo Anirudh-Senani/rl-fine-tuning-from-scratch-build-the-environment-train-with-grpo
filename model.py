@@ -440,8 +440,60 @@ def completion_entropy(policy, seqs, mask):
     entropy = -((torch.exp(logprobs) * logprobs).sum(dim=-1))
     return ((entropy * mask).sum()/mask.sum()).item()
 
-# Step 21 - evaluate (not yet solved)
-# TODO: implement
+# Step 21 - evaluate
+import torch
+from collections import Counter
+
+
+@torch.no_grad()
+def evaluate(policy, tasks, k, generator):
+    # TODO: one sampling pass -> pass1, passk, lenient_pass1, gaming, entropy, by_digits, reasons, example
+    n = len(tasks)
+    target_lens = torch.tensor([len(str(target)) for _, target in tasks])
+    prompts = torch.tensor([encode_task(nums, target) for nums, target in tasks])
+    seqs, mask = sample_completions(policy, prompts, k, generator)
+    entropy = completion_entropy(policy, seqs, mask)
+
+    seqs = seqs.reshape((n, k, -1)).tolist()
+    decoded = [[decode_completion(ids[PROMPT_LEN:]) for ids in group] for group in seqs]
+
+    verified, reason = zip(*[verify(nums, target, completion, True) for (nums, target), completions in zip(tasks, decoded) for completion in completions])
+    verified = torch.tensor(verified, dtype=torch.float32)
+    verified = verified.reshape((n, k))
+
+    lenient_verified = [[verify(nums, target, completion, False)[0] for completion in completions] for (nums, target), completions in zip(tasks, decoded)]
+    lenient_verified = torch.tensor(lenient_verified, dtype=torch.float32)
+
+    pass1 = verified.sum().item()/(n*k)
+    passk = (verified.sum(dim=-1) > 0.0).float().sum().item()/n
+
+    lenient_pass1 = lenient_verified.sum().item()/(n*k)
+
+    gaming = max(lenient_verified.sum().item() - verified.sum().item(), 0.0)/(n*k)
+
+    by_digits = {}
+    for target_len in range(1,4):
+        inds = torch.arange(n)[target_lens == target_len]
+        ni = len(inds)
+        if ni > 0:
+            by_digits[target_len] = verified[inds].reshape(-1).sum().item()/(ni * k)
+
+    reasons = Counter(reason)
+    for key in reasons:
+        reasons[key] = round(reasons[key]/(n*k), 3)
+
+    example = decoded[0][0]
+
+    return dict(
+        pass1=pass1,
+        passk=passk,
+        lenient_pass1=lenient_pass1,
+        gaming=gaming,
+        entropy=entropy,
+        by_digits=by_digits,
+        reasons=reasons,
+        example=example
+    )
 
 # Step 22 - build_base (not yet solved)
 # TODO: implement
