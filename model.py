@@ -384,8 +384,38 @@ def rollout(policy, ref, tasks, G, generator, strict=True, normalize_std=True):
         reasons=reasons
     )
 
-# Step 19 - train_grpo (not yet solved)
-# TODO: implement
+# Step 19 - train_grpo
+import random
+import torch
+import torch.nn as nn
+
+
+def train_grpo(policy, ref, tasks, steps, cfg, seed=0, strict=True):
+    # TODO: rollout, cfg["epochs"] clipped updates per rollout, history of float records
+    rng = random.Random(seed)
+    generator = torch.Generator().manual_seed(seed)
+
+    opt = torch.optim.AdamW(policy.parameters(), lr=cfg['lr'])
+
+    records = []
+
+    for step in range(steps):
+        batch = rng.sample(tasks, cfg['batch'])
+        out = rollout(policy, ref, batch, cfg['group'], generator, strict, cfg['normalize_std'])
+
+        for _ in range(cfg['epochs']):
+            logp = completion_logprobs(policy, out['seqs'])
+            loss, stats = grpo_loss(logp, out['old_logp'], out['ref_logp'], out['advantages'], out['mask'], cfg['clip_eps'], cfg['beta'])
+
+            opt.zero_grad()
+            loss.backward()
+            nn.utils.clip_grad_norm_(policy.parameters(), 1.0)
+            opt.step()
+
+        record = {'step':step, 'reward':out['rewards'].mean().item(), 'loss':loss.item(), 'pg':stats['pg'], 'kl':stats['kl'], 'clip_frac':stats['clip_frac']}
+        records.append(record)
+
+    return records
 
 # Step 20 - completion_entropy (not yet solved)
 # TODO: implement
