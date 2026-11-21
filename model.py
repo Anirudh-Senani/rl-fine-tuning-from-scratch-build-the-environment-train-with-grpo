@@ -535,6 +535,41 @@ def run_grpo(base, steps, cfg, seed=0, strict=True):
         history=history
     )
 
-# Step 24 - rlvr_experiment (not yet solved)
-# TODO: implement
+# Step 24 - rlvr_experiment
+import torch
+
+
+def rlvr_experiment(seed=0, sft_steps=600, rl_steps=300, hack_steps=50, cfg=None, k=8, window=50):
+    # TODO: base + evaluation, strict GRPO run, fail-open run, windowed curve; return the report
+    base = build_base(seed, sft_steps)
+    base_eval = evaluate(base['policy'], base['held'], k, torch.Generator().manual_seed(seed))
+
+    strict = run_grpo(base, rl_steps, cfg, seed, True)
+    strict_eval = evaluate(strict['policy'], base['held'], k, torch.Generator().manual_seed(seed))
+
+    hack = run_grpo(base, hack_steps, cfg, seed, False)
+    hack_eval = evaluate(hack['policy'], base['held'], k, torch.Generator().manual_seed(seed))
+
+    curve = []
+    history = strict['history']
+    for i in range(0, len(history), window):
+        record = {'step':0, 'reward':0.0, 'kl':0.0}
+        for hist in history[i:i+window]:
+            record['reward'] += hist['reward']
+            record['kl'] += hist['kl']
+
+        record['step'] = hist['step']+1
+        record['reward'] = record['reward']/len(history[i:i+window])
+        record['kl'] = record['kl']/len(history[i:i+window])
+
+        curve.append(record)
+
+    return dict(
+        base=dict(sft_loss=base['sft_loss'], eval=base_eval),
+        strict=dict(history=strict['history'], eval=strict_eval, curve=curve),
+        hack=dict(history=hack['history'], eval=hack_eval),
+        cfg=cfg,
+        n_train=len(base['train']),
+        n_held=len(base['held'])
+    )
 
