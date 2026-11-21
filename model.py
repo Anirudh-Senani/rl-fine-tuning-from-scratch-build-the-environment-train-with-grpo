@@ -495,8 +495,28 @@ def evaluate(policy, tasks, k, generator):
         example=example
     )
 
-# Step 22 - build_base (not yet solved)
-# TODO: implement
+# Step 22 - build_base
+import random
+import torch
+
+
+def build_base(seed=0, sft_steps=600, n_draws=4000, n_held=200):
+    # TODO: seeded split, demos, policy init and pretraining; return the dict
+    rng = random.Random(seed)
+    torch.manual_seed(seed)
+
+    train, held = task_split(rng, n_draws, n_held)
+    policy = Policy()
+
+    demos = make_demos(rng, train)
+    sft_loss = pretrain(policy, demos, sft_steps)
+
+    return dict(
+        policy=policy,
+        train=train,
+        held=held,
+        sft_loss=sft_loss
+    )
 
 # Step 23 - run_grpo (not yet solved)
 # TODO: implement
